@@ -77,12 +77,11 @@ jobs:
       - name: Run Lighthouse CI
         run: |
           # IMPORTANT: Replace YOUR_SITE_URL with your actual website link
-          npx lhci autorun --collect.url=YOUR_SITE_URL --upload.target=temporary-public-storage
+          npx lhci autorun --collect.url=${{ secrets.LHCI_URL }} --upload.target=temporary-public-storage
       - name: Run WPScan for Vulnerabilities
         uses: wpscanteam/wpscan-action@v1.1.0
         with:
-          # IMPORTANT: Replace YOUR_SITE_URL and add your WPScan API token as a secret
-          url: http://72.62.125.163:8002/
+          url: ${{ secrets.SITE_URL }}
           api-token: ${{ secrets.WPSCAN_API_TOKEN }}
           # Fails the build if any vulnerabilities are found
           fail-on-vulnerability: true
