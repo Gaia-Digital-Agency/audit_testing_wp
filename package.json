@@ -4,7 +4,12 @@
     "lint-staged": "^16.2.7"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 0",
+    "test": "echo \"No tests configured\" && exit 0",
     "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.php": "vendor/bin/phpcs --standard=WordPress",
+    "*.{js,jsx}": "eslint --no-error-on-unmatched-pattern",
+    "*.{js,css,scss,md}": "prettier --check --ignore-unknown"
   }
 }
