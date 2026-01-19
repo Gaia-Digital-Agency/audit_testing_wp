@@ -86,6 +86,12 @@ jobs:
       - name: Run Lighthouse CI
         run: |
           npx lhci autorun --collect.url=${{ env.YOUR_SITE_URL }} --upload.target=temporary-public-storage
+      - name: Upload Lighthouse report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lhci-report
+          path: .lighthouseci/
+          if-no-files-found: warn
       - name: Setup Ruby for WPScan
         uses: ruby/setup-ruby@v1
         with:
@@ -115,15 +121,30 @@ jobs:
       - name: Download Lighthouse report artifact
         uses: actions/download-artifact@v4
         with:
-          name: lhci-report # This name is the default from the lhci autorun command
+          name: lhci-report
           path: ./lhci-report
+
+      - name: List downloaded files
+        run: ls -la ./lhci-report/
 
       - name: Install dependencies for PDF generation
         run: npm ci
 
       - name: Convert Lighthouse HTML report to PDF
         run: |
-          node -e "const puppeteer = require('puppeteer'); (async () => { const browser = await puppeteer.launch(); const page = await browser.newPage(); await page.goto('file://${process.cwd()}/lhci-report/lighthouse-report.html', {waitUntil: 'networkidle0'}); await page.pdf({path: 'Lighthouse-Report.pdf', format: 'A4', printBackground: true}); await browser.close(); })();"
+          # Find the HTML report file (Lighthouse generates files with timestamps)
+          HTML_FILE=$(find ./lhci-report -name "*.html" | head -1)
+          echo "Found HTML file: $HTML_FILE"
+          node -e "
+            const puppeteer = require('puppeteer');
+            (async () => {
+              const browser = await puppeteer.launch({args: ['--no-sandbox']});
+              const page = await browser.newPage();
+              await page.goto('file://' + process.cwd() + '/' + process.argv[1], {waitUntil: 'networkidle0'});
+              await page.pdf({path: 'Lighthouse-Report.pdf', format: 'A4', printBackground: true});
+              await browser.close();
+            })();
+          " "$HTML_FILE"
 
       - name: Upload PDF Report as Artifact
         uses: actions/upload-artifact@v4
