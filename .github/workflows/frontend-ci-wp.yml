@@ -1,0 +1,115 @@
+# .github/workflows/frontend-ci-wp.yml
+
+name: WordPress Quality Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # === PILLAR 2: Code Validation (Runs on every Pull Request) ===
+  php-lint:
+    name: PHP Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Best practice to use latest major version
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl, json
+          coverage: none
+          # Caching composer dependencies for faster runs
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+      - name: Run WordPress Coding Standards check
+        run: vendor/bin/phpcs --standard=WordPress
+
+  frontend-lint-and-audit:
+    name: Frontend Lint & Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm' # Caching npm packages for faster runs
+      - name: Install npm dependencies
+        run: npm ci
+      - name: Run ESLint
+        run: npm run lint
+      - name: Check formatting with Prettier
+        run: npm run format:check
+      - name: Audit for npm security vulnerabilities
+        run: npm audit --audit-level=high
+
+  # === PILLAR 3: Live Site Audit (Runs only after merging to main) ===
+  live-audit:
+    name: Live URL Audit
+    needs: [php-lint, frontend-lint-and-audit]
+    # This 'if' condition ensures this job only runs on pushes to the 'main' branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.12.x
+          # IMPORTANT: Replace YOUR_SITE_URL with your actual website link
+          lhci autorun --collect.url=YOUR_SITE_URL --upload.target=temporary-public-storage
+      - name: Run WPScan for Vulnerabilities
+        uses: wpscanteam/wpscan-action@v1.1.0
+        with:
+          # IMPORTANT: Replace YOUR_SITE_URL and add your WPScan API token as a secret
+          url: YOUR_SITE_URL
+          api-token: ${{ secrets.WPSCAN_API_TOKEN }}
+          # Fails the build if any vulnerabilities are found
+          fail-on-vulnerability: true
+
+  # This job generates a PDF report from the Lighthouse results
+  generate-report:
+    name: Generate PDF Report
+    needs: [live-audit]
+    if: success() || failure() # Always run this job to generate a report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Download Lighthouse report artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: lhci-report # This name is the default from the lhci autorun command
+          path: ./lhci-report
+
+      - name: Install Puppeteer for PDF generation
+        run: npm install puppeteer
+
+      - name: Convert Lighthouse HTML report to PDF
+        run: |
+          node -e "const puppeteer = require('puppeteer'); (async () => { const browser = await puppeteer.launch(); const page = await browser.newPage(); await page.goto('file://${process.cwd()}/lhci-report/lighthouse-report.html', {waitUntil: 'networkidle0'}); await page.pdf({path: 'Lighthouse-Report.pdf', format: 'A4', printBackground: true}); await browser.close(); })();"
+
+      - name: Upload PDF Report as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: lighthouse-scan-report-pdf
+          path: Lighthouse-Report.pdf

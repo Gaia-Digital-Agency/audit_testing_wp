@@ -1,0 +1,137 @@
+# .github/workflows/frontend-ci.yml
+
+name: Frontend Quality Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # This job runs linters and formatters
+  lint-and-format:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint # Assumes you have a "lint" script in package.json
+
+      - name: Check formatting with Prettier
+        run: npm run format:check # Assumes a "format:check" script
+
+  # This job runs tests and checks for security vulnerabilities
+  test-and-audit:
+    name: Test & Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit and integration tests
+        run: npm test -- --coverage # Generates a coverage report
+
+      - name: Audit for security vulnerabilities
+        run: npm audit --audit-level=high
+
+      - name: Build project
+        run: npm run build # Ensures the project builds without errors
+
+  # This job runs against a deployed URL after a PR is merged or on push to main
+  live-audit:
+    name: Live URL Audit
+    # This job should run after your deployment job succeeds.
+    # For this example, we'll run it after the other jobs.
+    needs: [lint-and-format, test-and-audit]
+    # Only run on pushes to the main branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.12.x
+          # Replace YOUR_SITE_URL with your actual website link
+          lhci autorun --collect.url=YOUR_SITE_URL --upload.target=temporary-public-storage
+
+      - name: Run E2E tests and link checker
+        # Assumes you have E2E tests configured with Playwright/Cypress
+        # These tests can check for 404 pages, broken links, and run Axe for a11y.
+        run: npx playwright test
+        env:
+          # Pass the URL to your tests
+          BASE_URL: YOUR_SITE_URL
+
+  # This job runs against a deployed URL after a PR is merged or on push to main
+  live-audit:
+    name: Live URL Audit
+    # This job should run after your deployment job succeeds.
+    # For this example, we'll run it after the other jobs.
+    needs: [lint-and-format, test-and-audit]
+    # Only run on pushes to the main branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.12.x
+          # Replace YOUR_SITE_URL with your actual website link
+          lhci autorun --collect.url=YOUR_SITE_URL --upload.target=temporary-public-storage
+
+      - name: Run E2E tests and link checker
+        # Assumes you have E2E tests configured with Playwright/Cypress
+        # These tests can check for 404 pages, broken links, and run Axe for a11y.
+        run: npx playwright test
+        env:
+          # Pass the URL to your tests
+          BASE_URL: YOUR_SITE_URL
