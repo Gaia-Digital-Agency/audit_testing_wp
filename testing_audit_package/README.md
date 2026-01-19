@@ -26,7 +26,7 @@ testing_audit_package/
 │
 ├── code_files/               # Configuration templates and guides
 │   ├── frontend-ci.yml       # GitHub Actions workflow (generic)
-│   ├── frontend-ci-wp.yml    # GitHub Actions workflow (WordPress)
+│   ├── frontend-ci-wp.yml    # GitHub Actions workflow (WordPress) - MAIN WORKFLOW
 │   ├── use_guide.md          # Implementation and testing guide
 │   └── manual_check_template.md  # Manual QA review checklist
 │
@@ -61,25 +61,48 @@ Validates the deployed application's performance and security.
 
 ## Key Documents
 
-| File | Description |
-|------|-------------|
-| [audit_steps_wp.md](audit_plans/audit_steps_wp.md) | Step-by-step WordPress setup guide |
-| [automation_plan.md](audit_plans/automation_plan.md) | Complete automation strategy documentation |
-| [use_guide.md](code_files/use_guide.md) | How to implement and test the workflow |
-| [manual_check_template.md](code_files/manual_check_template.md) | Checklist for manual QA reviews |
-| [frontend-ci-wp.yml](code_files/frontend-ci-wp.yml) | GitHub Actions workflow template |
+| File                                                            | Description                                |
+| --------------------------------------------------------------- | ------------------------------------------ |
+| [audit_steps_wp.md](audit_plans/audit_steps_wp.md)              | Step-by-step WordPress setup guide         |
+| [automation_plan.md](audit_plans/automation_plan.md)            | Complete automation strategy documentation |
+| [use_guide.md](code_files/use_guide.md)                         | How to implement and test the workflow     |
+| [manual_check_template.md](code_files/manual_check_template.md) | Checklist for manual QA reviews            |
+| [frontend-ci-wp.yml](code_files/frontend-ci-wp.yml)             | GitHub Actions workflow template           |
 
 ## Getting Started
 
 1. **Read the strategy**: Start with [automation_plan.md](audit_plans/automation_plan.md) to understand the full approach
 2. **Follow the setup guide**: Use [audit_steps_wp.md](audit_plans/audit_steps_wp.md) for WordPress-specific implementation
 3. **Copy the workflow**: Place [frontend-ci-wp.yml](code_files/frontend-ci-wp.yml) in your project's `.github/workflows/` directory
-4. **Test your setup**: Follow the testing steps in [use_guide.md](code_files/use_guide.md)
-5. **Perform manual reviews**: Use [manual_check_template.md](code_files/manual_check_template.md) for items that require human judgment
+4. **Configure your site URL**: Edit `frontend-ci-wp.yml` and update the `YOUR_SITE_URL` at the top of the file
+5. **Set up secrets**: Add `WPSCAN_API_TOKEN` to your GitHub repository secrets
+6. **Test your setup**: Follow the testing steps in [use_guide.md](code_files/use_guide.md)
+7. **Perform manual reviews**: Use [manual_check_template.md](code_files/manual_check_template.md) for items that require human judgment
+
+## Quick Configuration
+
+The `frontend-ci-wp.yml` workflow has a configurable URL at the top for easy setup:
+
+```yaml
+# ============================================
+# CONFIGURATION - Update this URL before use:
+# ============================================
+# YOUR_SITE_URL: http://your-site-url.com/
+# ============================================
+
+env:
+  YOUR_SITE_URL: "http://your-site-url.com/"
+```
+
+This URL is used for:
+
+- **Lighthouse CI**: Performance, accessibility, SEO, and best practices audits
+- **WPScan**: WordPress security vulnerability scanning
 
 ## What Gets Automated vs. Manual
 
 ### Automated Checks
+
 - Code formatting and linting (PHP, JS, CSS)
 - WordPress coding standards compliance
 - Security vulnerability scanning
@@ -88,6 +111,7 @@ Validates the deployed application's performance and security.
 - SEO technical checks
 
 ### Manual Reviews Required
+
 - Visual design consistency
 - Content quality and clarity
 - Keyboard navigation testing
@@ -102,6 +126,18 @@ Validates the deployed application's performance and security.
 - **PDF Artifacts**: Downloadable Lighthouse reports from GitHub Actions
 - **Interactive Reports**: Lighthouse CI temporary public storage links
 
+### Accessing the PDF Report
+
+After the workflow completes:
+
+1. Go to your repository on GitHub
+2. Click the **Actions** tab
+3. Click on the completed workflow run
+4. Scroll down to the **Artifacts** section
+5. Download **lighthouse-scan-report-pdf**
+
+The artifact contains `Lighthouse-Report.pdf` with your site's performance, accessibility, SEO, and best practices scores.
+
 ## Requirements
 
 - Node.js and npm
@@ -111,4 +147,4 @@ Validates the deployed application's performance and security.
 
 ---
 
-*This package is part of the audit_testing_wp framework by Gaia Digital Agency.*
+_This package is part of the audit_testing_wp framework by Gaia Digital Agency._

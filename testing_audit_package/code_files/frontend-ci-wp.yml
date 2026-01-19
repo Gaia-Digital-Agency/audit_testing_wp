@@ -85,13 +85,16 @@ jobs:
         run: npm ci
       - name: Run Lighthouse CI
         run: |
-          npx lhci autorun --collect.url=${{ env.YOUR_SITE_URL }} --upload.target=temporary-public-storage
+          mkdir -p .lighthouseci
+          npx @lhci/cli collect --url=${{ env.YOUR_SITE_URL }} --output-dir=.lighthouseci
+          echo "Lighthouse files generated:"
+          ls -la .lighthouseci/
       - name: Upload Lighthouse report artifact
         uses: actions/upload-artifact@v4
         with:
           name: lhci-report
           path: .lighthouseci/
-          if-no-files-found: warn
+          if-no-files-found: error
       - name: Setup Ruby for WPScan
         uses: ruby/setup-ruby@v1
         with:
@@ -106,7 +109,7 @@ jobs:
   generate-report:
     name: Generate PDF Report
     needs: [live-audit]
-    if: always() # Always run this job to generate a report, more concise
+    if: needs.live-audit.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Setup Node.js
