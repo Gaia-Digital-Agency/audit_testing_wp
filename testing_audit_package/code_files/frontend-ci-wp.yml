@@ -87,7 +87,7 @@ jobs:
   generate-report:
     name: Generate PDF Report
     needs: [live-audit]
-    if: success() || failure() # Always run this job to generate a report
+    if: always() # Always run this job to generate a report, more concise
     runs-on: ubuntu-latest
     steps:
       - name: Setup Node.js
@@ -95,21 +95,24 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download Lighthouse report artifact
-        uses: actions/download-artifact@v4 # This was already correct, ensuring it stays
+        uses: actions/download-artifact@v4
         with:
           name: lhci-report # This name is the default from the lhci autorun command
           path: ./lhci-report
 
-      - name: Install Puppeteer for PDF generation
-        run: npm install puppeteer
+      - name: Install dependencies for PDF generation
+        run: npm ci
 
       - name: Convert Lighthouse HTML report to PDF
         run: |
           node -e "const puppeteer = require('puppeteer'); (async () => { const browser = await puppeteer.launch(); const page = await browser.newPage(); await page.goto('file://${process.cwd()}/lhci-report/lighthouse-report.html', {waitUntil: 'networkidle0'}); await page.pdf({path: 'Lighthouse-Report.pdf', format: 'A4', printBackground: true}); await browser.close(); })();"
 
       - name: Upload PDF Report as Artifact
-        uses: actions/upload-artifact@v4 # This was also correct, ensuring it stays
+        uses: actions/upload-artifact@v4
         with:
           name: lighthouse-scan-report-pdf
           path: Lighthouse-Report.pdf
