@@ -1,13 +1,15 @@
 # .github/workflows/frontend-ci-wp.yml
+#
+# ============================================
+# CONFIGURATION - Update this URL before use:
+# ============================================
+# YOUR_SITE_URL: http://72.62.125.163:8002/
+# ============================================
 
 name: WordPress Quality Checks
 
-# ===========================================
-# CONFIGURATION - Edit your site URL here
-# ===========================================
 env:
-  SITE_URL: http://72.62.125.163:8002/
-# ===========================================
+  YOUR_SITE_URL: "http://72.62.125.163:8002/"
 
 on:
   push:
@@ -42,7 +44,7 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
       - name: Run WordPress Coding Standards check
-        run: vendor/bin/phpcs --standard=WordPress wp-content/ || true
+        run: vendor/bin/phpcs --standard=WordPress wp-content/
 
   frontend-lint-and-audit:
     name: Frontend Lint & Audit
@@ -78,19 +80,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-      - name: Install Lighthouse CI
-        run: npm install -g @lhci/cli@0.12.x
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
       - name: Run Lighthouse CI
         run: |
-          mkdir -p ./lhci-report
-          lhci autorun --collect.url=${{ env.SITE_URL }} --upload.target=temporary-public-storage || true
-        continue-on-error: true
-      - name: Upload Lighthouse Report
+          mkdir -p .lighthouseci
+          npx @lhci/cli collect --url=${{ env.YOUR_SITE_URL }} --output-dir=.lighthouseci
+          echo "Lighthouse files generated:"
+          ls -la .lighthouseci/
+      - name: Upload Lighthouse report artifact
         uses: actions/upload-artifact@v4
         with:
           name: lhci-report
           path: .lighthouseci/
-          if-no-files-found: warn
+          if-no-files-found: error
       - name: Setup Ruby for WPScan
         uses: ruby/setup-ruby@v1
         with:
@@ -98,55 +102,74 @@ jobs:
       - name: Install and Run WPScan
         run: |
           gem install wpscan
-          wpscan --url ${{ env.SITE_URL }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format cli || true
+          wpscan --url ${{ env.YOUR_SITE_URL }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format cli || true
         continue-on-error: true
 
-  # This job generates a PDF report from the Lighthouse results
+  # This job generates a Markdown report from the Lighthouse results
   generate-report:
-    name: Generate PDF Report
+    name: Generate Markdown Report
     needs: [live-audit]
-    if: always()
+    if: needs.live-audit.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
       - name: Download Lighthouse report artifact
         uses: actions/download-artifact@v4
         with:
           name: lhci-report
           path: ./lhci-report
-        continue-on-error: true
 
-      - name: Install Puppeteer for PDF generation
-        run: npm install puppeteer
+      - name: List downloaded files
+        run: ls -la ./lhci-report/
 
-      - name: Find and convert Lighthouse HTML report to PDF
+      - name: Generate Markdown Report
         run: |
-          # Find the lighthouse HTML report
-          REPORT_FILE=$(find ./lhci-report -name "*.html" -type f | head -1)
-          if [ -n "$REPORT_FILE" ]; then
-            node -e "
-              const puppeteer = require('puppeteer');
-              (async () => {
-                const browser = await puppeteer.launch();
-                const page = await browser.newPage();
-                await page.goto('file://${process.cwd()}/${REPORT_FILE}', {waitUntil: 'networkidle0'});
-                await page.pdf({path: 'Lighthouse-Report.pdf', format: 'A4', printBackground: true});
-                await browser.close();
-              })();
-            "
-          else
-            echo "No Lighthouse report found, creating placeholder PDF"
-            echo "No Lighthouse report was generated" > Lighthouse-Report.pdf
-          fi
-        continue-on-error: true
+          # Find the JSON report file
+          JSON_FILE=$(find ./lhci-report -name "lhr-*.json" | head -1)
+          echo "Found JSON file: $JSON_FILE"
 
-      - name: Upload PDF Report as Artifact
+          # Parse JSON and create Markdown report
+          node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+
+            const report = \`# Lighthouse Report
+
+**URL:** \${data.finalUrl}
+**Generated:** \${new Date(data.fetchTime).toLocaleString()}
+**Lighthouse Version:** \${data.lighthouseVersion}
+
+## Scores
+
+| Category | Score |
+|----------|-------|
+| Performance | \${Math.round(data.categories.performance.score * 100)}% |
+| Accessibility | \${Math.round(data.categories.accessibility.score * 100)}% |
+| Best Practices | \${Math.round(data.categories['best-practices'].score * 100)}% |
+| SEO | \${Math.round(data.categories.seo.score * 100)}% |
+
+## Performance Metrics
+
+| Metric | Value |
+|--------|-------|
+| First Contentful Paint | \${data.audits['first-contentful-paint'].displayValue} |
+| Largest Contentful Paint | \${data.audits['largest-contentful-paint'].displayValue} |
+| Total Blocking Time | \${data.audits['total-blocking-time'].displayValue} |
+| Cumulative Layout Shift | \${data.audits['cumulative-layout-shift'].displayValue} |
+| Speed Index | \${data.audits['speed-index'].displayValue} |
+
+## Summary
+
+This report was automatically generated by the WordPress Quality Checks workflow.
+\`;
+
+            fs.writeFileSync('Lighthouse-Report.md', report);
+            console.log('Markdown report generated successfully');
+          " "$JSON_FILE"
+
+          cat Lighthouse-Report.md
+
+      - name: Upload Markdown Report as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lighthouse-scan-report-pdf
-          path: Lighthouse-Report.pdf
-          if-no-files-found: warn
+          name: lighthouse-report-markdown
+          path: Lighthouse-Report.md
