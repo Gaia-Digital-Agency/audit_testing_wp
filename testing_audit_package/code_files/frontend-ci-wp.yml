@@ -78,7 +78,7 @@ jobs:
         uses: wpscanteam/wpscan-action@v1.1.0
         with:
           # IMPORTANT: Replace YOUR_SITE_URL and add your WPScan API token as a secret
-          url: http://72.62.125.163:8002
+          url: http://72.62.125.163:8002/
           api-token: ${{ secrets.WPSCAN_API_TOKEN }}
           # Fails the build if any vulnerabilities are found
           fail-on-vulnerability: true
@@ -96,7 +96,7 @@ jobs:
           node-version: '18'
 
       - name: Download Lighthouse report artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4 # This was already correct, ensuring it stays
         with:
           name: lhci-report # This name is the default from the lhci autorun command
           path: ./lhci-report
@@ -109,7 +109,7 @@ jobs:
           node -e "const puppeteer = require('puppeteer'); (async () => { const browser = await puppeteer.launch(); const page = await browser.newPage(); await page.goto('file://${process.cwd()}/lhci-report/lighthouse-report.html', {waitUntil: 'networkidle0'}); await page.pdf({path: 'Lighthouse-Report.pdf', format: 'A4', printBackground: true}); await browser.close(); })();"
 
       - name: Upload PDF Report as Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4 # This was also correct, ensuring it stays
         with:
           name: lighthouse-scan-report-pdf
           path: Lighthouse-Report.pdf
