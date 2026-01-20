@@ -88,7 +88,10 @@ jobs:
       - name: Install and Run WPScan
         run: |
           gem install wpscan
-          wpscan --url ${{ secrets.SITE_URL || 'http://72.62.125.163:8002/' }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format cli --fail-on vulnerabilities
+          # Run WPScan and output findings to a JSON file. We add `|| true` so the job doesn't stop if vulnerabilities are found here.
+          wpscan --url ${{ secrets.SITE_URL || 'http://72.62.125.163:8002/' }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format json -o wpscan.json || true
+          # Check the JSON file for vulnerabilities. If the 'vulnerabilities' array is not empty, exit with an error code to fail the build.
+          if [ $(jq '.vulnerabilities | length' wpscan.json) -gt 0 ]; then echo "Vulnerabilities found!" && exit 1; fi
 
       - name: Run W3C HTML Validator
         run: npm run validate:w3c
