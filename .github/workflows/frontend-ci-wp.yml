@@ -101,6 +101,8 @@ jobs:
 
       - name: Run E2E Tests
         run: npm run e2e
+        env:
+          SITE_URL: ${{ secrets.SITE_URL || 'http://72.62.125.163:8002/' }}
 
       - name: Upload Playwright Report
         if: always()
