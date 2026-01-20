@@ -73,6 +73,7 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
+      # E2E tests are commented out for now, but placed early as requested
       # - name: Run E2E Tests
       #   run: SITE_URL=${{ env.SITE_URL }} npm run e2e
 
@@ -81,7 +82,8 @@ jobs:
         with:
           urls: |
             ${{ env.SITE_URL }}
-          uploadArtifacts: true
+          uploadArtifacts: true # This uploads a default artifact from the action itself
+          outputDirectory: .lighthouseci/ # Explicitly save reports to this directory for our artifact upload
 
       - name: Setup Ruby for WPScan
         uses: ruby/setup-ruby@v1
@@ -91,15 +93,15 @@ jobs:
       - name: Install and Run WPScan
         run: |
           gem install wpscan
-          wpscan --url ${{ env.SITE_URL }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format json -o wpscan.json || true
+          wpscan --url ${{ env.SITE_URL }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format json -o wpscan_report.json || true
           # Check the JSON file for vulnerabilities. If the 'vulnerabilities' array is not empty, exit with an error code to fail the build.
-          if [ $(jq '.vulnerabilities | length' wpscan.json) -gt 0 ]; then echo "Vulnerabilities found!" && exit 1; fi
+          if [ $(jq '.vulnerabilities | length' wpscan_report.json) -gt 0 ]; then echo "Vulnerabilities found!" && exit 1; fi
 
       - name: Run W3C HTML Validator
-        run: npm run validate:w3c
+        run: npm run validate:w3c > w3c_report.txt
 
       - name: Run Broken Link Checker # This can be slow, so it runs after E2E
-        run: npm run check:links
+        run: npm run check:links > blc_report.txt
 
       # - name: Upload Playwright Report
       #   if: always()
@@ -108,6 +110,30 @@ jobs:
       #     name: playwright-report
       #     path: playwright-report/
       #     retention-days: 7
+
+      - name: Upload WPScan Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wpscan-report
+          path: wpscan_report.json
+          retention-days: 7
+
+      - name: Upload W3C HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w3c-html-report
+          path: w3c_report.txt
+          retention-days: 7
+
+      - name: Upload Broken Link Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: broken-link-report
+          path: blc_report.txt
+          retention-days: 7
 
       - name: Upload Lighthouse Report
         if: always()
