@@ -1,16 +1,50 @@
 {
   "devDependencies": {
+    "@playwright/test": "^1.41.0",
+    "broken-link-checker": "^0.7.8",
+    "bundlesize2": "^0.0.31",
+    "eslint": "^8.57.0",
+    "html-validator-cli": "^9.1.0",
+    "htmlhint": "^1.1.4",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
-    "prettier": "^3.8.0"
+    "prettier": "^3.8.0",
+    "stylelint": "^16.2.1",
+    "stylelint-config-standard": "^36.0.0",
+    "vitest": "^1.2.0"
   },
   "scripts": {
-    "test": "echo \"No tests configured\" && exit 0",
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint:php": "composer exec phpcs -- --standard=WordPress 'target/wp-content/themes/twentytwentyfive/'",
+    "lint:html": "npx htmlhint 'target/wp-content/themes/twentytwentyfive/**/*.php' --config .htmlhintrc",
+    "lint:css": "npx stylelint 'target/wp-content/themes/twentytwentyfive/**/!(*.min).{css,scss}'",
+    "lint:js": "npx eslint 'target/wp-content/themes/twentytwentyfive/**/*.js'",
+    "lint": "npm run lint:php && npm run lint:html && npm run lint:css && npm run lint:js",
+    "validate:w3c": "html-validator --url $npm_package_config_siteUrl --format=text || true",
+    "check:links": "blc $npm_package_config_siteUrl --recursive --ordered || true",
+    "check:outdated": "npm outdated",
+    "check:size": "bundlesize",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed"
+  },
+  "config": {
+    "siteUrl": "http://72.62.125.163:8002/"
   },
   "lint-staged": {
-    "*.php": "vendor/bin/phpcs --standard=WordPress",
-    "*.{js,jsx}": "eslint --no-error-on-unmatched-pattern",
-    "*.{js,css,scss,md}": "prettier --check --ignore-unknown"
-  }
+    "target/wp-content/themes/twentytwentyfive/**/*.php": [
+      "composer exec phpcs -- --standard=WordPress",
+      "npx htmlhint --config .htmlhintrc"
+    ],
+    "target/wp-content/themes/twentytwentyfive/**/*.{js,jsx}": "npx eslint",
+    "target/wp-content/themes/twentytwentyfive/**/!(*.min).{css,scss}": "npx stylelint",
+    "*.{js,json,yml,md}": "npx prettier --write"
+  },
+  "bundlesize": [
+    {
+      "path": "target/wp-content/themes/twentytwentyfive/style.css",
+      "maxSize": "30 kB"
+    }
+  ]
 }

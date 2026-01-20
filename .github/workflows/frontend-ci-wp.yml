@@ -2,16 +2,16 @@ name: WordPress Theme CI/CD
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   # =================================================================
   # PILLAR 2: Code Validation on Pull Requests
   # =================================================================
   code-validation:
-    name: 'Pillar 2: Code Validation'
+    name: "Pillar 2: Code Validation"
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
 
@@ -22,15 +22,15 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: "8.1"
           extensions: mbstring, zip
           coverage: none
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install Composer Dependencies
         run: composer install --working-dir=./target
@@ -62,8 +62,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install Node Dependencies
         run: npm ci
@@ -80,12 +80,15 @@ jobs:
         env:
           SITE_URL: ${{ secrets.SITE_URL || 'http://72.62.125.163:8002/' }}
 
-      - name: Run WPScan Security Audit
-        uses: wpscanteam/wpscan-action@v0.4.0
+      - name: Setup Ruby for WPScan
+        uses: ruby/setup-ruby@v1
         with:
-          website: ${{ secrets.SITE_URL || 'http://72.62.125.163:8002/' }}
-          api-token: ${{ secrets.WPSCAN_API_TOKEN }}
-          fail-on-vulnerability: true
+          ruby-version: "3.1"
+
+      - name: Install and Run WPScan
+        run: |
+          gem install wpscan
+          wpscan --url ${{ secrets.SITE_URL || 'http://72.62.125.163:8002/' }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format cli --fail
 
       - name: Run W3C HTML Validator
         run: npm run validate:w3c
