@@ -82,8 +82,7 @@ jobs:
         with:
           urls: |
             ${{ env.SITE_URL }}
-          uploadArtifacts: true # This uploads a default artifact from the action itself
-          outputDirectory: .lighthouseci/ # Explicitly save reports to this directory for our artifact upload
+          uploadArtifacts: true # This action automatically uploads the report as an artifact
 
       - name: Setup Ruby for WPScan
         uses: ruby/setup-ruby@v1
@@ -133,12 +132,3 @@ jobs:
         with:
           name: broken-link-report
           path: blc_report.txt
-          retention-days: 7
-
-      - name: Upload Lighthouse Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-report
-          path: .lighthouseci/
-          retention-days: 7
