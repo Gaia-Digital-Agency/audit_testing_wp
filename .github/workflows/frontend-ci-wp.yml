@@ -88,7 +88,7 @@ jobs:
       - name: Install and Run WPScan
         run: |
           gem install wpscan
-          wpscan --url ${{ secrets.SITE_URL || 'http://72.62.125.163:8002/' }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format cli --fail
+          wpscan --url ${{ secrets.SITE_URL || 'http://72.62.125.163:8002/' }} --api-token ${{ secrets.WPSCAN_API_TOKEN }} --format cli --fail-on vulnerabilities
 
       - name: Run W3C HTML Validator
         run: npm run validate:w3c
