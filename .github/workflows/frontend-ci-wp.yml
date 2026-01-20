@@ -74,7 +74,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run E2E Tests
-        run: npm run e2e
+        run: SITE_URL=${{ env.SITE_URL }} npm run e2e
 
       - name: Run Lighthouse Audit
         uses: treosh/lighthouse-ci-action@v11
